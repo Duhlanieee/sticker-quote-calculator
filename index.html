@@ -1,20 +1,19 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Sticker Quote Calculator</title>
 <style>
-  body {font-family: system-ui, sans-serif; background:#fafafa; display:flex; justify-content:center; padding:20px;}
-  .container {background:white; padding:20px; border-radius:14px; max-width:480px; width:100%; box-shadow:0 6px 20px rgba(0,0,0,0.08);}
-  h1{text-align:center; margin-bottom:12px; font-size:1.25rem;}
-  .row{margin-bottom:12px; display:flex; flex-direction:column;}
-  label{font-weight:400; margin-bottom:4px;}
-  input[type="number"]{padding:10px 12px; font-size:1rem; border-radius:8px; border:1px solid #ccc;}
-  .inline{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
-  .inline label{margin:0; font-weight:400;}
-  .note{font-size:0.88rem; color:#777; margin-bottom:12px;}
-  .price{text-align:center; font-size:1.35rem; font-weight:700; color:#006600;}
+body { font-family: system-ui, sans-serif; background:#fafafa; display:flex; justify-content:center; align-items:center; min-height:100vh; margin:0; }
+.container { background:#fff; padding:20px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.08); max-width:480px; width:100%; }
+h1 { text-align:center; margin-bottom:18px; }
+.row { display:flex; flex-direction:column; margin-bottom:12px; }
+label { font-weight:400; margin-bottom:4px; }
+input[type=number] { padding:10px; font-size:1rem; border-radius:8px; border:1px solid #ccc; }
+.inline { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.price { text-align:center; font-weight:700; font-size:1.3rem; color:#006600; margin-top:12px; }
+.note { font-size:0.85rem; color:#666; text-align:center; }
 </style>
 </head>
 <body>
@@ -23,12 +22,12 @@
 
   <div class="row">
     <label for="numStickers">Number of Stickers</label>
-    <input id="numStickers" type="number" min="1" step="1" value="50">
+    <input id="numStickers" type="number" step="1" min="1" value="50">
   </div>
 
   <div class="row">
     <label for="squareInches">Square Inches per Sticker</label>
-    <input id="squareInches" type="number" min="0.1" step="0.1" value="4">
+    <input id="squareInches" type="number" step="0.1" min="0.1" value="4">
   </div>
 
   <div class="inline">
@@ -40,60 +39,64 @@
   <div class="price">Estimated Price: $<span id="price">0.00</span></div>
 </div>
 
-<!-- Tabletop.js to fetch published Google Sheets -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/tabletop.js/1.5.4/tabletop.min.js"></script>
 <script>
-const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT1FRNMDZphwlubJ60eQVO4coBqs3oCR1iO6THC9CzJHYb-o7ZptYKtBniEbhtAnQ/pubhtml';
-let sheetData = {};
+const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT1FRNMDZphwlubJ60eQVO4coBqs3oCR1iO6THC9CzJHYb-o7ZptYKtBniEbhtAnQ/pub?output=csv';
 
-// Fetch sheet data
-Tabletop.init({
-  key: SHEET_URL,
-  simpleSheet: true,
-  callback: function(data, tabletop) {
-    // Convert to object with cell addresses as keys
-    data.forEach(row => {
-      for (let k in row) {
-        // trim and normalize key names
-        const key = k.trim();
-        sheetData[key] = row[k];
-      }
-    });
-    updatePrice(); // initial calculation
-  }
-});
+let sheetData = null; // stores parsed sheet
 
-const elNum = document.getElementById('numStickers');
-const elSq = document.getElementById('squareInches');
-const elGloss = document.getElementById('gloss');
-const elPrice = document.getElementById('price');
+// Fetch and parse the CSV
+async function loadSheet() {
+  const response = await fetch(sheetUrl);
+  const csvText = await response.text();
+  const rows = csvText.trim().split('\n').map(r => r.split(','));
+  sheetData = rows;
+  updatePrice(); // calculate once sheet is loaded
+}
 
+// Read cell by A1-like coordinates
+function getCell(row, col) {
+  return sheetData?.[row]?.[col];
+}
+
+// Update H9/H10 in memory and get J11 as price
+function calculatePrice(numStickers, sqin) {
+  if (!sheetData) return 0;
+
+  // Copy sheetData to temporary array (so we never modify original)
+  const tempSheet = sheetData.map(r => r.slice());
+
+  // H9 = row 8, column 7 (0-indexed) -> adjust to your sheet if needed
+  // H10 = row 9, column 7 (0-indexed)
+  tempSheet[8][7] = numStickers; // H9
+  tempSheet[9][7] = sqin;        // H10
+
+  // J11 = row 10, column 9 (0-indexed)
+  const priceStr = tempSheet[10][9];
+  const price = parseFloat(priceStr);
+  return price || 0;
+}
+
+// Update UI
 function updatePrice() {
-  const num = parseInt(elNum.value, 10) || 0;
-  const sq = parseFloat(elSq.value) || 0;
+  const num = parseInt(document.getElementById('numStickers').value,10) || 0;
+  const sq = parseFloat(document.getElementById('squareInches').value) || 0;
+  let price = calculatePrice(num, sq);
 
-  if (!sheetData) return;
-
-  // Copy sheetData to a temporary object
-  let tempSheet = {...sheetData};
-
-  // Override H9 (num stickers) and H10 (sqin)
-  tempSheet['H9'] = num;
-  tempSheet['H10'] = sq;
-
-  // Read J11 as the estimated price
-  let price = parseFloat(tempSheet['J11']) || 0;
-
-  // If normal gloss is checked, currently does not change the price
-  if (elGloss.checked) {
+  // Normal gloss placeholder
+  if(document.getElementById('gloss').checked){
     // no-op for now
   }
 
-  elPrice.textContent = price.toFixed(2);
+  document.getElementById('price').textContent = price.toFixed(2);
 }
 
-// Wire inputs
-[elNum, elSq, elGloss].forEach(el => el.addEventListener('input', updatePrice));
+// Hook input events
+['numStickers','squareInches','gloss'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', updatePrice);
+});
+
+// Load the sheet
+loadSheet();
 </script>
 </body>
 </html>
