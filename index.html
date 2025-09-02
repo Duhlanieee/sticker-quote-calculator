@@ -85,10 +85,10 @@
       const J5 = 0.08;
       const J6 = 0;
 
-      // J7-J9 calculations
-      const J7 = 0.002139 * squareInches * numStickers;
-      const J8 = 0.005348 * squareInches * numStickers;
-      const J9 = Math.max(0.01, 0.000535 * squareInches * numStickers);
+      // J7-J9 using exact fractions
+      const J7 = (0.2 / (8.5 * 11)) * squareInches * numStickers;
+      const J8 = (0.5 / (8.5 * 11)) * squareInches * numStickers;
+      const J9 = Math.max(0.01, (0.05 / (8.5 * 11)) * squareInches * numStickers);
 
       // J10 piecewise
       let J10;
@@ -103,7 +103,7 @@
       // H12
       const H12 = (102.52 * Math.log(numStickers) + 341.09) / 100;
 
-      // Estimated price
+      // Final estimated price
       return J11 * H12;
     }
 
