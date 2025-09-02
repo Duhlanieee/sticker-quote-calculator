@@ -28,7 +28,7 @@
     label {
       display: block;
       margin: 12px 0 6px;
-      font-weight: normal; /* remove bold */
+      font-weight: normal; /* not bold */
     }
     input[type="number"] {
       width: 100%;
@@ -42,7 +42,7 @@
       margin: 12px 0;
       display: flex;
       align-items: center;
-      gap: 8px; /* space between checkbox and label */
+      gap: 8px;
     }
     .price {
       text-align: center;
@@ -79,19 +79,31 @@
 
   <script>
     function calculatePrice(numStickers, squareInches) {
+      // J3-J6 constants
+      const J3 = 0.10;
+      const J4 = 0;
+      const J5 = 0.08;
+      const J6 = 0;
+
+      // J7-J9 calculations
       const J7 = 0.002139 * squareInches * numStickers;
       const J8 = 0.005348 * squareInches * numStickers;
       const J9 = Math.max(0.01, 0.000535 * squareInches * numStickers);
 
+      // J10 piecewise
       let J10;
       if (numStickers < 50) J10 = 0.55;
       else if (numStickers < 100) J10 = 0.85;
       else if (numStickers < 150) J10 = 1.15;
       else J10 = 1.45;
 
-      const J11 = 0.10 + 0.08 + J7 + J8 + J9 + J10;
+      // Sum J11
+      const J11 = J3 + J4 + J5 + J6 + J7 + J8 + J9 + J10;
+
+      // H12
       const H12 = (102.52 * Math.log(numStickers) + 341.09) / 100;
 
+      // Estimated price
       return J11 * H12;
     }
 
@@ -101,6 +113,7 @@
 
       let price = calculatePrice(numStickers, squareInches);
 
+      // Lamination (currently Normal Gloss does not affect price)
       if (document.getElementById("gloss").checked) {
         price = price; // placeholder for future lamination logic
       }
@@ -108,10 +121,12 @@
       document.getElementById("price").textContent = price.toFixed(2);
     }
 
+    // Update price on input change
     document.querySelectorAll("input").forEach(input => {
       input.addEventListener("input", updatePrice);
     });
 
+    // Initialize price
     updatePrice();
   </script>
 </body>
