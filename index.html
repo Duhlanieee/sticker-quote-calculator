@@ -6,20 +6,24 @@
 <title>Sticker Price Calculator</title>
 <style>
   :root{
-    --page-bg: #F5EEE6;       /* soft warm page background */
+    /* Warm, comfortable palette */
+    --page-bg-top: #F6EFE6;   /* very soft cream */
+    --page-bg-bottom: #F2E6D7;/* slightly warmer */
     --card-bg: #7A4F2E;       /* warm brown card */
-    --card-contrast: #F9F4EE; /* pale cream text on brown */
-    --muted: #ECDCC8;         /* muted cream for secondary text */
-    --accent: #B76B34;        /* slightly brighter accent */
-    --input-bg: #FFF8F0;      /* gentle input background */
-    --shadow: 0 10px 30px rgba(0,0,0,0.12);
+    --card-contrast: #F7EEE3; /* pale cream text on brown */
+    --muted: #E2D0B9;         /* muted cream for secondary text */
+    --accent: #C47A3F;        /* accent */
+    --input-bg: #EADFCB;      /* gentle input background (not white) */
+    --price-overlay: rgba(0,0,0,0.07); /* subtle dark overlay on brown */
+    --shadow: 0 10px 28px rgba(0,0,0,0.12);
   }
 
   html,body { height:100%; }
   body{
     margin:0;
     font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-    background: var(--page-bg);
+    /* subtle warm vertical gradient page background */
+    background: linear-gradient(180deg, var(--page-bg-top), var(--page-bg-bottom));
     display:flex;
     align-items:center;
     justify-content:center;
@@ -29,13 +33,16 @@
 
   .card{
     width:100%;
-    max-width:560px;
-    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02)), var(--card-bg);
+    max-width:640px;
+    background: var(--card-bg); /* solid warm brown */
     color:var(--card-contrast);
     border-radius:14px;
-    padding:20px;
+    padding:22px;
     box-shadow: var(--shadow);
     box-sizing:border-box;
+    /* subtle inner highlight to keep surface from feeling flat */
+    position:relative;
+    overflow:visible;
   }
 
   h1{
@@ -60,12 +67,15 @@
     padding:10px 12px;
     border-radius:10px;
     border: none;
-    background: var(--input-bg);
-    color: #2c1f14;
+    background: var(--input-bg); /* warm cream, not white */
+    color: #3b2a20;
     font-size:1rem;
     box-sizing:border-box;
     box-shadow: inset 0 1px 0 rgba(0,0,0,0.03);
+    -moz-appearance: textfield;
   }
+  input[type="number"]::-webkit-inner-spin-button, 
+  input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin:0; }
 
   /* Lamination section */
   .section-title {
@@ -84,7 +94,6 @@
     margin:0;
   }
 
-  /* ensure label text next to checkbox and not bold */
   .checkbox-group label {
     margin:0;
     font-weight:400;
@@ -110,8 +119,8 @@
     font-size:1.35rem;
     font-weight:800;
     color:var(--card-contrast);
-    background: rgba(255,255,255,0.04);
-    padding:10px 12px;
+    background: var(--price-overlay); /* subtle overlay that is NOT white */
+    padding:12px 14px;
     border-radius:10px;
     box-sizing:border-box;
   }
@@ -156,10 +165,7 @@
   </main>
 
 <script>
-/* Exact calculation logic reproduced from your sheet (C1..C9 / A7..A9).
-   This script is unchanged in logic from the working version you approved;
-   only UI/CSS was updated. */
-
+/* Exact calculation logic reproduced from your sheet (C1..C9 / A7..A9). */
 function computePrice(numStickers, sqInches) {
   const A7 = Number(numStickers);
   const A8 = Number(sqInches);
