@@ -1,98 +1,170 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Sticker Quote (live via Google Sheet)</title>
-  <style>
-    body{font-family:system-ui,Arial;margin:20px;background:#fafafa;color:#222}
-    .card{max-width:520px;margin:0 auto;background:#fff;padding:18px;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.08)}
-    label{display:block;margin-top:10px;font-weight:600}
-    input[type=number]{width:100%;padding:10px;margin-top:6px;border-radius:8px;border:1px solid #ddd}
-    .inline{display:flex;gap:10px;align-items:center;margin-top:10px}
-    .price{margin-top:16px;font-weight:700;color:#006600;text-align:center;font-size:1.2rem}
-    .note{font-size:.9rem;color:#666;text-align:center;margin-top:6px}
-    button{display:block;margin:14px auto;padding:8px 14px;border-radius:8px;border:none;background:#0066cc;color:white}
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Sticker Price Calculator</title>
+<style>
+  :root{--bg:#fafafa;--card:#fff;--accent:#006600;--muted:#666}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
+    background:var(--bg);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+    color:#111;
+  }
+  .card{
+    width:100%;
+    max-width:520px;
+    background:var(--card);
+    border-radius:14px;
+    padding:18px;
+    box-shadow:0 8px 28px rgba(0,0,0,0.08);
+    box-sizing:border-box;
+  }
+  h1{margin:0 0 12px;font-size:1.15rem;text-align:center}
+  label{display:block;margin-top:10px;font-weight:500}
+  input[type=number]{
+    width:100%;
+    padding:10px 12px;
+    margin-top:6px;
+    border-radius:8px;
+    border:1px solid #e3e3e3;
+    font-size:1rem;
+    box-sizing:border-box;
+  }
+  /* make arrows adjust in whole numbers for quantity (step attr used) */
+  .inline{display:flex;align-items:center;gap:10px;margin-top:10px}
+  .note{color:var(--muted);font-size:.9rem;margin-top:8px;text-align:center}
+  .price{margin-top:14px;text-align:center;color:var(--accent);font-weight:700;font-size:1.25rem}
+  @media (max-width:420px){
+    .card{padding:14px;border-radius:12px}
+    h1{font-size:1rem}
+    .price{font-size:1.05rem}
+  }
+</style>
 </head>
 <body>
-  <div class="card">
-    <h2>Sticker Quote (Live)</h2>
+  <main class="card" role="main" aria-labelledby="title">
+    <h1 id="title">Sticker Quote Calculator</h1>
 
-    <label for="numStickers">Number of Stickers</label>
-    <input id="numStickers" type="number" min="1" step="1" value="50">
+    <label for="numStickers">Number of stickers</label>
+    <input id="numStickers" type="number" min="1" step="1" value="50" inputmode="numeric" />
 
-    <label for="squareInches">Square Inches per Sticker</label>
-    <input id="squareInches" type="number" min="0.1" step="0.1" value="4">
+    <label for="sqInches">Square inches per sticker</label>
+    <input id="sqInches" type="number" min="0.01" step="0.1" value="4" inputmode="decimal" />
 
-    <div class="inline">
-      <input id="gloss" type="checkbox">
+    <div class="inline" aria-hidden="true">
+      <input id="gloss" type="checkbox" />
       <label for="gloss" style="font-weight:400">Normal Gloss</label>
     </div>
-    <div class="note">Other lamination types coming soon!</div>
+    <div class="note">Other lamination types coming soon. Normal Gloss does not change price.</div>
 
-    <div class="price">Estimated Price: $<span id="price">—</span></div>
+    <div class="price">Estimated Price: $<span id="price">0.00</span></div>
+    <div class="note" id="debug" aria-hidden="true" style="display:none"></div>
+  </main>
 
-    <button id="refreshBtn">Get Live Quote</button>
-    <div id="status" style="text-align:center;color:#666;margin-top:6px;font-size:.9rem"></div>
-  </div>
+<script>
+/*
+ JavaScript implementation of the exact formulas shown in your Google Sheet screenshot.
 
-  <script>
-    // Replace with your GAS Web App URL (from Apps Script deployment)
-    const GAS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbyYCqgRBSogK1HkR-dpH_iGw53Ywxz-VxwjM3fJuaXjjuX1zYyYU56HFHB2jTF3nuMN8g/exec';
+ Mapping to sheet:
+  - A7 = num stickers
+  - A8 = sq in per sticker
+  - C1 = 0.1
+  - C2 = 0.04
+  - C3 = 2.8/35
+  - C4 = ((0.2/(8.5*11))*(A8*A7))
+  - C5 = ((0.5/(8.5*11))*(A8*A7))
+  - C6 = IF(((0.05/(8.5*11))*(A8*A7))<0.01, 0.01, ((0.05/(8.5*11))*(A8*A7)))
+  - C7 = IF(A7<50,0.55, IF(A7<100,0.85, IF(A7<150,1.15, 1.45)))
+  - C8 = SUM(C1:C7)
+  - A9 = (102.52 * LN(A7) + 341.09) / 100
+  - C9 (PRICE) = C8 * A9
+*/
 
-    const elNum = document.getElementById('numStickers');
-    const elSq = document.getElementById('squareInches');
-    const elPrice = document.getElementById('price');
-    const elStatus = document.getElementById('status');
-    const btn = document.getElementById('refreshBtn');
+function computePrice(numStickers, sqInches) {
+  // Ensure numeric
+  const A7 = Number(numStickers);
+  const A8 = Number(sqInches);
 
-    async function fetchPrice() {
-      const num = parseInt(elNum.value,10) || 0;
-      const sq = parseFloat(elSq.value) || 0;
+  // Protection for invalid inputs (LN requires >0)
+  if (!(A7 > 0) || isNaN(A8)) return 0;
 
-      if (num <= 0 || sq < 0) {
-        elPrice.textContent = '—';
-        elStatus.textContent = 'Enter valid inputs.';
-        return;
-      }
+  // C1..C3 constants exactly as sheet
+  const C1 = 0.10;
+  const C2 = 0.04;
+  const C3 = 2.8 / 35; // equals 0.08
 
-      elStatus.textContent = 'Checking live sheet…';
-      try {
-        const resp = await fetch(GAS_WEB_APP_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ numStickers: num, squareInches: sq })
-        });
+  // denominator 8.5*11 as in sheet
+  const denom = 8.5 * 11; // 93.5
 
-        const data = await resp.json();
-        if (data && data.price != null && !isNaN(Number(data.price))) {
-          // Show price (two decimal places)
-          elPrice.textContent = Number(data.price).toFixed(2);
-          elStatus.textContent = 'Live price fetched from sheet (temporary change only).';
-        } else {
-          elPrice.textContent = '—';
-          elStatus.textContent = 'Received unexpected response from server.';
-          console.error('Unexpected response', data);
-        }
-      } catch (err) {
-        elStatus.textContent = 'Error fetching price. See console.';
-        console.error(err);
-      }
-    }
+  // C4, C5 using area = A8 * A7
+  const area = A8 * A7;
+  const C4 = (0.2 / denom) * area;
+  const C5 = (0.5 / denom) * area;
 
-    // Auto-update on input changes but use the button to reduce API calls
-    btn.addEventListener('click', fetchPrice);
+  // C6 with IF lower bound 0.01
+  const rawC6 = (0.05 / denom) * area;
+  const C6 = (rawC6 < 0.01) ? 0.01 : rawC6;
 
-    // Optional: update automatically on input after small debounce
-    let timeout;
-    [elNum, elSq].forEach(el => el.addEventListener('input', () => {
-      clearTimeout(timeout);
-      timeout = setTimeout(fetchPrice, 650);
-    }));
+  // C7 piecewise exactly as your IF cascade
+  let C7;
+  if (A7 < 50) C7 = 0.55;
+  else if (A7 < 100) C7 = 0.85;
+  else if (A7 < 150) C7 = 1.15;
+  else C7 = 1.45;
 
-    // Initialize
-    fetchPrice();
-  </script>
+  // C8 sum
+  const C8 = C1 + C2 + C3 + C4 + C5 + C6 + C7;
+
+  // A9 multiplier = (102.52*LN(A7) + 341.09) / 100
+  const A9 = (102.52 * Math.log(A7) + 341.09) / 100;
+
+  // Final price = C8 * A9 (matches sheet: C9 = C8 * A9)
+  const finalPrice = C8 * A9;
+
+  // Return breakdown if needed
+  return {
+    finalPrice,
+    parts: { C1,C2,C3,C4,C5,C6,C7,C8,A9 }
+  };
+}
+
+// UI hookup
+const elNum = document.getElementById('numStickers');
+const elSq = document.getElementById('sqInches');
+const elPrice = document.getElementById('price');
+const elDebug = document.getElementById('debug');
+
+function update() {
+  const num = parseInt(elNum.value, 10) || 0;
+  const sq = parseFloat(elSq.value) || 0;
+
+  const result = computePrice(num, sq);
+  elPrice.textContent = Number(result.finalPrice).toFixed(2);
+
+  // Optional debug: show breakdown (toggle by changing display)
+  // elDebug.style.display = 'block';
+  // elDebug.textContent = JSON.stringify(result.parts, null, 2);
+}
+
+// listen for changes (real-time)
+[elNum, elSq].forEach(el => el.addEventListener('input', () => {
+  // small debounce to avoid too many updates while typing decimals
+  clearTimeout(el.updateTimeout);
+  el.updateTimeout = setTimeout(update, 120);
+}));
+
+// initialize
+update();
+
+// Quick sanity check visible in console
+console.log('Sanity check 50 @ 4:', computePrice(50,4).finalPrice.toFixed(5)); // should be 19.84717... -> 19.85 display
+</script>
 </body>
 </html>
