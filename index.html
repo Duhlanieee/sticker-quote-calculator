@@ -193,7 +193,7 @@ function computePrice(numStickers, sqInches) {
 
   const C8 = C1 + C2 + C3 + C4 + C5 + C6 + C7;
   const A9 = (102.52 * Math.log(A7) + 341.09) / 100;
-  const finalPrice = C8 * A9 * 1.05; // I just added 5% cuz I thought 150ct 12sqin for $138 was too low
+  const finalPrice = C8 * A9 * 1.1; // I just added 10% cuz I thought 150ct 12sqin for $138 was too low
 
   return { finalPrice, parts: { C1,C2,C3,C4,C5,C6,C7,C8,A9 } };
 }
